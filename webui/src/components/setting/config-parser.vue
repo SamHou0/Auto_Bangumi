@@ -28,6 +28,11 @@ const items: SettingItem<RssParser>[] = [
     label: () => t('config.parser_set.exclude'),
     type: 'dynamic-tags',
   },
+  {
+    configKey: 'skip_duplicate_episodes',
+    label: () => t('config.parser_set.skip_duplicate_episodes'),
+    type: 'switch',
+  },
 ];
 </script>
 

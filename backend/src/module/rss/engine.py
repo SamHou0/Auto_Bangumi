@@ -2,10 +2,12 @@ import logging
 import re
 from typing import Optional
 
+from module.conf import settings
 from module.database import Database, engine
 from module.downloader import DownloadClient
 from module.models import Bangumi, ResponseModel, RSSItem, Torrent
 from module.network import RequestContent
+from module.parser.analyser import raw_parser
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +112,61 @@ class RSSEngine(Database):
                 return matched
         return None
 
+    def is_duplicate_episode(self, torrent: Torrent, bangumi: Bangumi) -> bool:
+        """
+        Check if the torrent episode is already downloaded.
+        
+        Args:
+            torrent: The torrent to check
+            bangumi: The matched bangumi data
+            
+        Returns:
+            True if this episode is already downloaded, False otherwise
+        """
+        if not settings.rss_parser.skip_duplicate_episodes:
+            return False
+            
+        try:
+            # Parse episode info from torrent name
+            episode_info = raw_parser(torrent.name)
+            if not episode_info or episode_info.episode == 0:
+                # Cannot parse episode, allow download
+                return False
+                
+            # Get all downloaded torrents for this bangumi
+            downloaded_torrents = self.torrent.search_all()
+            
+            # Check if any downloaded torrent matches this bangumi + season + episode
+            for downloaded in downloaded_torrents:
+                if downloaded.bangumi_id != bangumi.id:
+                    continue
+                if not downloaded.downloaded:
+                    continue
+                    
+                # Parse the downloaded torrent's episode info
+                try:
+                    downloaded_episode = raw_parser(downloaded.name)
+                    if not downloaded_episode:
+                        continue
+                        
+                    # Check if season and episode match
+                    if (downloaded_episode.season == episode_info.season and 
+                        downloaded_episode.episode == episode_info.episode):
+                        logger.info(
+                            f"[Engine] Skip duplicate episode: {bangumi.official_title} "
+                            f"S{episode_info.season:02d}E{episode_info.episode:02d}"
+                        )
+                        return True
+                except Exception as e:
+                    logger.debug(f"[Engine] Error parsing downloaded torrent: {e}")
+                    continue
+                    
+            return False
+        except Exception as e:
+            logger.warning(f"[Engine] Error checking duplicate episode: {e}")
+            # If we can't check, allow download to be safe
+            return False
+
     def refresh_rss(self, client: DownloadClient, rss_id: Optional[int] = None):
         # Get All RSS Items
         if not rss_id:
@@ -125,6 +182,12 @@ class RSSEngine(Database):
             for torrent in new_torrents:
                 matched_data = self.match_torrent(torrent)
                 if matched_data:
+                    # Check for duplicate episodes before downloading
+                    if self.is_duplicate_episode(torrent, matched_data):
+                        logger.debug(f"[Engine] Skip duplicate episode: {torrent.name}")
+                        torrent.downloaded = False
+                        continue
+                        
                     if client.add_torrent(torrent, matched_data):
                         logger.debug(f"[Engine] Add torrent {torrent.name} to client")
                     torrent.downloaded = True
