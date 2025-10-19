@@ -126,15 +126,35 @@ class RSSEngine(Database):
         if not settings.rss_parser.skip_duplicate_episodes:
             return False
             
+        downloaded_torrents = self.torrent.search_all()
+        return self._is_duplicate_episode_cached(torrent, bangumi, downloaded_torrents)
+    
+    def _is_duplicate_episode_cached(
+        self, 
+        torrent: Torrent, 
+        bangumi: Bangumi,
+        downloaded_torrents: list[Torrent] | None
+    ) -> bool:
+        """
+        Internal method to check for duplicate episodes using a cached torrent list.
+        
+        Args:
+            torrent: The torrent to check
+            bangumi: The matched bangumi data
+            downloaded_torrents: Pre-fetched list of downloaded torrents (or None)
+            
+        Returns:
+            True if this episode is already downloaded, False otherwise
+        """
+        if not settings.rss_parser.skip_duplicate_episodes or downloaded_torrents is None:
+            return False
+            
         try:
             # Parse episode info from torrent name
             episode_info = raw_parser(torrent.name)
             if not episode_info or episode_info.episode == 0:
                 # Cannot parse episode, allow download
                 return False
-                
-            # Get all downloaded torrents for this bangumi
-            downloaded_torrents = self.torrent.search_all()
             
             # Check if any downloaded torrent matches this bangumi + season + episode
             for downloaded in downloaded_torrents:
@@ -176,6 +196,12 @@ class RSSEngine(Database):
             rss_items = [rss_item] if rss_item else []
         # From RSS Items, get all torrents
         logger.debug(f"[Engine] Get {len(rss_items)} RSS items")
+        
+        # Preload all downloaded torrents once for duplicate checking
+        downloaded_torrents = None
+        if settings.rss_parser.skip_duplicate_episodes:
+            downloaded_torrents = self.torrent.search_all()
+        
         for rss_item in rss_items:
             new_torrents = self.pull_rss(rss_item)
             # Get all enabled bangumi data
@@ -183,7 +209,7 @@ class RSSEngine(Database):
                 matched_data = self.match_torrent(torrent)
                 if matched_data:
                     # Check for duplicate episodes before downloading
-                    if self.is_duplicate_episode(torrent, matched_data):
+                    if self._is_duplicate_episode_cached(torrent, matched_data, downloaded_torrents):
                         logger.debug(f"[Engine] Skip duplicate episode: {torrent.name}")
                         torrent.downloaded = False
                         continue
