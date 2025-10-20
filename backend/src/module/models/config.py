@@ -37,6 +37,7 @@ class RSSParser(BaseModel):
     enable: bool = Field(True, description="Enable RSS parser")
     filter: list[str] = Field(["720", r"\d+-\d"], description="Filter")
     language: str = "zh"
+    skip_duplicate_episodes: bool = Field(False, description="Skip duplicate episodes")
 
 
 class BangumiManage(BaseModel):

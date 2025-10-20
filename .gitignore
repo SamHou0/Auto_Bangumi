@@ -216,3 +216,4 @@ dev-dist
 
 # test file
 test.*
+package-lock.json

@@ -57,7 +57,8 @@
       "title": "Parser Setting",
       "token": "Token",
       "type": "Parser Type",
-      "url": "Custom Url"
+      "url": "Custom Url",
+      "skip_duplicate_episodes": "Skip Duplicate Episodes"
     },
     "proxy_set": {
       "enable": "Enable",

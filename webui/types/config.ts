@@ -41,6 +41,7 @@ export interface RssParser {
   filter: Array<string>;
   language: TupleToUnion<RssParserLang>;
   parser_type: TupleToUnion<RssParserMethodType>;
+  skip_duplicate_episodes: boolean;
 }
 export interface BangumiManage {
   enable: boolean;
@@ -110,6 +111,7 @@ export const initConfig: Config = {
     filter: [],
     language: 'zh',
     parser_type: 'parser',
+    skip_duplicate_episodes: false,
   },
   bangumi_manage: {
     enable: true,

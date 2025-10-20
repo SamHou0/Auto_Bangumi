@@ -57,7 +57,8 @@
       "title": "解析设置",
       "token": "Token",
       "type": "解析类型",
-      "url": "自定义网址"
+      "url": "自定义网址",
+      "skip_duplicate_episodes": "不下载重复剧集"
     },
     "proxy_set": {
       "enable": "启用",
